@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import CUSTOMERS
 from compliance import check_compliance, check_daily_limit
+from call_store import append_call_record, get_calls_for_customer, build_call_record
 from llm import generate_outreach_message, generate_handover_memo, _get_persona_for_customer
 from voice_sessions import (
     create_session,
@@ -155,6 +156,16 @@ def get_customer(customer_id: str):
         compliance_reason=time_reason if not time_ok else attempt_reason,
         max_contact_attempts=3,
     )
+
+
+@app.get("/customer/{customer_id}/calls", tags=["Customers"])
+def get_customer_calls(customer_id: str):
+    """
+    Return the full call history for a customer, oldest first.
+    Each record includes session metadata, Transfer Memo, and full transcript.
+    """
+    _get_customer_or_404(customer_id)  # 404 if unknown ID
+    return {"customer_id": customer_id, "calls": get_calls_for_customer(customer_id)}
 
 
 @app.post("/generate-outreach", response_model=GenerateOutreachResponse, tags=["Outreach"])
@@ -363,6 +374,15 @@ def voice_call_end(session_id: str):
     ]
 
     memo, escalation = generate_handover_memo(session.customer, chat_history)
+
+    # Persist call record to file
+    record = build_call_record(session, memo, escalation, duration)
+    append_call_record(record)
+
+    # Increment in-memory contact attempt counter
+    cid = session.customer_id
+    if cid in CUSTOMERS:
+        CUSTOMERS[cid]["contact_attempts_today"] = CUSTOMERS[cid].get("contact_attempts_today", 0) + 1
 
     return VoiceCallEndResponse(
         session_id=session_id,
