@@ -27,19 +27,8 @@ def _get_client() -> AzureOpenAI:
 
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")
 
-# ElevenLabs voice mapping per persona
-PERSONA_VOICE_MAP: dict[AgentPersona, str] = {
-    AgentPersona.supportive_partner: "Rachel",   # warm, calm
-    AgentPersona.formal_officer: "Adam",          # authoritative, direct
-    AgentPersona.balanced_advisor: "Bella",       # professional, neutral
-}
-
-# Hardcoded ElevenLabs voice ID fallbacks for the three pre-built voices
-VOICE_ID_FALLBACKS = {
-    "Rachel": "21m00Tcm4TlvDq8ikWAM",
-    "Adam":   "pNInz6obpgDQGcFmaJgB",
-    "Bella":  "EXAVITQu4vr4xnSDxMaL",
-}
+# Custom voice ID used for all personas
+CUSTOM_VOICE_ID = "yLZAvtg5PITL2tUmz4UB"
 
 
 def _build_voice_system_prompt(persona: AgentPersona, customer: dict) -> str:
@@ -161,11 +150,9 @@ def text_to_speech(text: str, persona: AgentPersona) -> bytes:
         from elevenlabs import VoiceSettings
 
         el_client = ElevenLabs(api_key=api_key)
-        voice_name = PERSONA_VOICE_MAP.get(persona, "Rachel")
-        voice_id = _resolve_voice_id(el_client, voice_name)
 
         audio_generator = el_client.text_to_speech.convert(
-            voice_id=voice_id,
+            voice_id=CUSTOM_VOICE_ID,
             text=text,
             model_id="eleven_turbo_v2",
             voice_settings=VoiceSettings(
@@ -181,17 +168,6 @@ def text_to_speech(text: str, persona: AgentPersona) -> bytes:
         logger.warning("ElevenLabs TTS failed: %s", exc)
         return b""
 
-
-def _resolve_voice_id(client, voice_name: str) -> str:
-    """Resolve a voice name to its ElevenLabs voice ID, with hardcoded fallbacks."""
-    try:
-        voices = client.voices.get_all()
-        for voice in voices.voices:
-            if voice.name.lower() == voice_name.lower():
-                return voice.voice_id
-    except Exception:
-        pass
-    return VOICE_ID_FALLBACKS.get(voice_name, VOICE_ID_FALLBACKS["Rachel"])
 
 
 def audio_to_base64(audio_bytes: bytes) -> str:
