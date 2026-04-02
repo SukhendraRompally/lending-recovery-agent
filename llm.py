@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from database import BANK_HARDSHIP_POLICY
-from models import AgentPersona
+from models import AgentPersona, PersonaTrace, EscalationTrace
 
 load_dotenv()
 
@@ -21,6 +21,106 @@ def _get_client() -> AzureOpenAI:
     return _client
 
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")
+
+
+def build_persona_trace(customer: dict) -> PersonaTrace:
+    """Return a structured trace explaining why a persona was assigned."""
+    loyalty = customer.get("loyalty", "medium").lower()
+    delinquency_count = customer.get("delinquency_count", 1)
+    tenure_years = customer.get("tenure_years", 0)
+    hardship = customer.get("hardship_flag", False)
+
+    if loyalty == "high" and delinquency_count <= 1:
+        return PersonaTrace(
+            assigned_persona="Supportive Partner",
+            trigger_rule="loyalty == 'high' AND delinquency_count <= 1",
+            reasoning=(
+                f"{customer['name']} has been a customer for {tenure_years} year(s) with high loyalty "
+                f"and only {delinquency_count} missed payment — relationship preservation protocol activated. "
+                f"Warm, empathetic tone selected to keep the customer engaged and find a solution together."
+                + (" Hardship flag noted — deferral options will be foregrounded." if hardship else "")
+            ),
+            key_signals={
+                "loyalty": loyalty,
+                "delinquency_count": delinquency_count,
+                "tenure_years": tenure_years,
+                "hardship_flag": hardship,
+            },
+        )
+    elif loyalty == "low" or delinquency_count >= 3:
+        trigger = "loyalty == 'low'" if loyalty == "low" else f"delinquency_count >= 3 ({delinquency_count} missed)"
+        return PersonaTrace(
+            assigned_persona="Formal Officer",
+            trigger_rule=f"loyalty == 'low' OR delinquency_count >= 3  →  triggered: {trigger}",
+            reasoning=(
+                f"{customer['name']} has {delinquency_count} missed payment(s) "
+                f"and {loyalty} loyalty ({tenure_years} year(s)) — "
+                f"formal recovery stance required. Direct, consequence-aware tone selected; "
+                f"resolution options framed as the customer's last opportunity before escalation."
+            ),
+            key_signals={
+                "loyalty": loyalty,
+                "delinquency_count": delinquency_count,
+                "tenure_years": tenure_years,
+                "hardship_flag": hardship,
+            },
+        )
+    else:
+        return PersonaTrace(
+            assigned_persona="Balanced Advisor",
+            trigger_rule="loyalty == 'medium' AND 1 < delinquency_count < 3",
+            reasoning=(
+                f"{customer['name']} has {tenure_years} year(s) of tenure with medium loyalty "
+                f"and {delinquency_count} missed payment(s) — balanced approach selected. "
+                f"Professional but empathetic tone acknowledges difficulty while maintaining urgency."
+                + (" Hardship context will be acknowledged proactively." if hardship else "")
+            ),
+            key_signals={
+                "loyalty": loyalty,
+                "delinquency_count": delinquency_count,
+                "tenure_years": tenure_years,
+                "hardship_flag": hardship,
+            },
+        )
+
+
+def build_escalation_trace(customer: dict, memo_text: str, chat_text: str) -> EscalationTrace:
+    """Return a structured trace explaining the escalation recommendation."""
+    triggers = []
+
+    if customer["delinquency_count"] >= 3:
+        triggers.append(f"Delinquency count is {customer['delinquency_count']} (threshold: ≥3 missed payments)")
+
+    if customer.get("contact_attempts_today", 0) >= 2:
+        triggers.append(f"Contact attempts today: {customer['contact_attempts_today']} (threshold: ≥2)")
+
+    escalation_keywords = ["no response", "unresponsive", "refused", "disconnected", "escalat"]
+    memo_lower = memo_text.lower()
+    chat_lower = chat_text.lower()
+    keyword_hits = [kw for kw in escalation_keywords if kw in memo_lower or kw in chat_lower]
+    if keyword_hits:
+        triggers.append(f"Escalation language detected in transcript: {', '.join(keyword_hits)}")
+
+    recommended = bool(triggers)
+
+    if recommended:
+        reasoning = (
+            f"Escalation flagged based on {len(triggers)} trigger(s): "
+            + "; ".join(triggers)
+            + ". Case should be reviewed by a human supervisor or transferred to an external collections agency."
+        )
+    else:
+        reasoning = (
+            f"No escalation triggers met — delinquency count is {customer['delinquency_count']} (<3), "
+            f"contact attempts are within limit, and no unresponsive behaviour detected. "
+            f"Standard follow-up process recommended."
+        )
+
+    return EscalationTrace(
+        escalation_recommended=recommended,
+        triggered_by=triggers,
+        reasoning=reasoning,
+    )
 
 
 def _get_persona_for_customer(customer: dict) -> AgentPersona:

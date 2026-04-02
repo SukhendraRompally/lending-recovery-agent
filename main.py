@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import CUSTOMERS
 from compliance import check_compliance, check_daily_limit
 from call_store import append_call_record, get_calls_for_customer, build_call_record
-from llm import generate_outreach_message, generate_handover_memo, _get_persona_for_customer
+from llm import generate_outreach_message, generate_handover_memo, _get_persona_for_customer, build_persona_trace, build_escalation_trace
 from voice_sessions import (
     create_session,
     get_session,
@@ -27,6 +27,7 @@ from models import (
     ComplianceStatus,
     RiskLevel,
     AgentPersona,
+    RiskScoreBreakdown,
     VoiceCallStartRequest,
     VoiceCallStartResponse,
     VoiceCallRespondRequest,
@@ -55,7 +56,7 @@ app.add_middleware(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _compute_risk_score(customer: dict) -> tuple[int, RiskLevel]:
+def _compute_risk_score(customer: dict) -> tuple[int, RiskLevel, RiskScoreBreakdown]:
     """
     Simple risk scoring:
       - Delinquency count:  +30 per occurrence (max 90)
@@ -63,16 +64,14 @@ def _compute_risk_score(customer: dict) -> tuple[int, RiskLevel]:
       - Debt > $1000:       +10
       - Hardship flag:      -10 (mitigating factor — not higher risk, just different handling)
     """
-    score = 0
-    score += min(customer["delinquency_count"] * 30, 90)
+    delinquency_component = min(customer["delinquency_count"] * 30, 90)
     loyalty_map = {"high": 0, "medium": 10, "low": 20}
-    score += loyalty_map.get(customer["loyalty"], 10)
-    if customer["debt_amount"] > 1000:
-        score += 10
-    if customer["hardship_flag"]:
-        score = max(0, score - 10)
+    loyalty_component = loyalty_map.get(customer["loyalty"], 10)
+    debt_component = 10 if customer["debt_amount"] > 1000 else 0
+    hardship_adjustment = -10 if customer["hardship_flag"] else 0
 
-    score = min(score, 100)
+    score = min(delinquency_component + loyalty_component + debt_component + hardship_adjustment, 100)
+    score = max(score, 0)
 
     if score < 35:
         level = RiskLevel.low
@@ -81,7 +80,15 @@ def _compute_risk_score(customer: dict) -> tuple[int, RiskLevel]:
     else:
         level = RiskLevel.high
 
-    return score, level
+    breakdown = RiskScoreBreakdown(
+        delinquency_component=delinquency_component,
+        loyalty_component=loyalty_component,
+        debt_component=debt_component,
+        hardship_adjustment=hardship_adjustment,
+        final_score=score,
+    )
+
+    return score, level, breakdown
 
 
 def _get_customer_or_404(customer_id: str) -> dict:
@@ -126,8 +133,9 @@ def get_customer(customer_id: str):
     Compliance status here is based on current contact-attempt count only (time-independent).
     """
     customer = _get_customer_or_404(customer_id)
-    risk_score, risk_level = _compute_risk_score(customer)
+    risk_score, risk_level, risk_breakdown = _compute_risk_score(customer)
     persona = _get_persona_for_customer(customer)
+    persona_trace = build_persona_trace(customer)
 
     time_ok, time_reason = check_compliance(customer)
     attempt_ok, attempt_reason = check_daily_limit(customer["contact_attempts_today"])
@@ -155,6 +163,8 @@ def get_customer(customer_id: str):
         compliance_status=compliance_status,
         compliance_reason=time_reason if not time_ok else attempt_reason,
         max_contact_attempts=3,
+        risk_score_breakdown=risk_breakdown,
+        persona_trace=persona_trace,
     )
 
 
@@ -203,6 +213,7 @@ def generate_outreach(request: GenerateOutreachRequest):
 
     # ── 3. LLM outreach generation ────────────────────────────────────────────
     message_text, persona, policy_refs = generate_outreach_message(customer)
+    _, _, risk_breakdown = _compute_risk_score(customer)
 
     return GenerateOutreachResponse(
         customer_id=customer["id"],
@@ -212,6 +223,8 @@ def generate_outreach(request: GenerateOutreachRequest):
         agent_persona=persona,
         message=message_text,
         policy_references=policy_refs,
+        persona_trace=build_persona_trace(customer),
+        risk_score_breakdown=risk_breakdown,
     )
 
 
@@ -297,6 +310,7 @@ def voice_call_start(request: VoiceCallStartRequest):
         agent_text=greeting_text,
         audio_base64=audio_b64,
         audio_available=bool(audio_bytes),
+        persona_trace=build_persona_trace(customer),
     )
 
 
@@ -375,6 +389,9 @@ def voice_call_end(session_id: str):
 
     memo, escalation = generate_handover_memo(session.customer, chat_history)
 
+    chat_text = "\n".join(f"[{m['role'].upper()}]: {m['content']}" for m in session.messages)
+    escalation_trace = build_escalation_trace(session.customer, memo, chat_text)
+
     # Persist call record to file
     record = build_call_record(session, memo, escalation, duration)
     append_call_record(record)
@@ -391,6 +408,7 @@ def voice_call_end(session_id: str):
         escalation_recommended=escalation,
         total_turns=session.turn_count,
         duration_seconds=duration,
+        escalation_trace=escalation_trace,
     )
 
 

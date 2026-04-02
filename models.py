@@ -5,6 +5,27 @@ from typing import Optional, List
 from enum import Enum
 
 
+class RiskScoreBreakdown(BaseModel):
+    delinquency_component: int = Field(..., description="Points added for missed payments (30 per occurrence, max 90)")
+    loyalty_component: int = Field(..., description="Points added for low/medium loyalty (low=20, medium=10, high=0)")
+    debt_component: int = Field(..., description="Points added if outstanding balance exceeds $1,000 (+10)")
+    hardship_adjustment: int = Field(..., description="Points deducted if customer has a hardship flag (-10)")
+    final_score: int = Field(..., description="Total risk score (0-100)")
+
+
+class PersonaTrace(BaseModel):
+    assigned_persona: str
+    trigger_rule: str = Field(..., description="The exact logical condition that fired")
+    reasoning: str = Field(..., description="Human-readable explanation of the decision")
+    key_signals: dict = Field(..., description="The data points that drove the decision")
+
+
+class EscalationTrace(BaseModel):
+    escalation_recommended: bool
+    triggered_by: List[str] = Field(..., description="Which conditions caused the escalation flag")
+    reasoning: str
+
+
 class ComplianceStatus(str, Enum):
     allowed = "allowed"
     blocked = "blocked"
@@ -45,6 +66,9 @@ class CustomerResponse(BaseModel):
     compliance_status: ComplianceStatus
     compliance_reason: Optional[str] = None
     max_contact_attempts: int = 3
+    # Telemetry
+    risk_score_breakdown: Optional[RiskScoreBreakdown] = None
+    persona_trace: Optional[PersonaTrace] = None
 
 
 class GenerateOutreachRequest(BaseModel):
@@ -64,6 +88,9 @@ class GenerateOutreachResponse(BaseModel):
     agent_persona: Optional[AgentPersona] = None
     message: Optional[str] = None
     policy_references: Optional[List[str]] = None
+    # Telemetry
+    persona_trace: Optional[PersonaTrace] = None
+    risk_score_breakdown: Optional[RiskScoreBreakdown] = None
 
 
 class ChatMessage(BaseModel):
@@ -103,6 +130,8 @@ class VoiceCallStartResponse(BaseModel):
     agent_text: Optional[str] = None     # None if compliance blocked
     audio_base64: Optional[str] = None   # None if blocked or TTS unavailable
     audio_available: bool = False
+    # Telemetry
+    persona_trace: Optional[PersonaTrace] = None
 
 
 class VoiceCallRespondRequest(BaseModel):
@@ -139,3 +168,5 @@ class VoiceCallEndResponse(BaseModel):
     escalation_recommended: bool
     total_turns: int
     duration_seconds: int
+    # Telemetry
+    escalation_trace: Optional[EscalationTrace] = None
