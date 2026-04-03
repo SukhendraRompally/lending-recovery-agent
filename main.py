@@ -34,6 +34,7 @@ from models import (
     VoiceCallRespondResponse,
     VoiceSessionStatus,
     VoiceCallEndResponse,
+    EscalateResponse,
 )
 
 app = FastAPI(
@@ -176,6 +177,36 @@ def get_customer_calls(customer_id: str):
     """
     _get_customer_or_404(customer_id)  # 404 if unknown ID
     return {"customer_id": customer_id, "calls": get_calls_for_customer(customer_id)}
+
+
+@app.get("/customer/{customer_id}/escalate", response_model=EscalateResponse, tags=["Customers"])
+def escalate_to_human(customer_id: str):
+    """
+    Return the Transfer Memo from the most recent completed call for this customer.
+    Intended for the 'Escalate to Human' button — no need to re-generate anything,
+    the memo was already produced when the call ended.
+    """
+    customer = _get_customer_or_404(customer_id)
+    calls = get_calls_for_customer(customer_id)
+
+    if not calls:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No completed calls found for customer '{customer_id}'. End a voice call first to generate a Transfer Memo.",
+        )
+
+    last = calls[-1]  # most recent call
+    return EscalateResponse(
+        customer_id=customer_id,
+        customer_name=customer["name"],
+        session_id=last.get("session_id"),
+        handover_memo=last["handover_memo"],
+        escalation_recommended=last["escalation_recommended"],
+        persona=last.get("persona"),
+        total_turns=last.get("turn_count"),
+        duration_seconds=last.get("duration_seconds"),
+        ended_at=last.get("ended_at"),
+    )
 
 
 @app.post("/generate-outreach", response_model=GenerateOutreachResponse, tags=["Outreach"])

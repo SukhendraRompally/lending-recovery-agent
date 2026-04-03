@@ -170,3 +170,15 @@ class VoiceCallEndResponse(BaseModel):
     duration_seconds: int
     # Telemetry
     escalation_trace: Optional[EscalationTrace] = None
+
+
+class EscalateResponse(BaseModel):
+    customer_id: str
+    customer_name: str
+    session_id: Optional[str] = None
+    handover_memo: str
+    escalation_recommended: bool
+    persona: Optional[str] = None
+    total_turns: Optional[int] = None
+    duration_seconds: Optional[int] = None
+    ended_at: Optional[str] = None
