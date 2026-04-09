@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Lending Recovery Agent"
+version = "1.0.0"
+id = "artifacts/lending-recovery-agent"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18542
+
+[services.development]
+run = "pnpm --filter @workspace/lending-recovery-agent run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lending-recovery-agent", "run", "build" ]
+publicDir = "artifacts/lending-recovery-agent/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18542"
+BASE_PATH = "/"
