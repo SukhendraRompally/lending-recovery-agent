@@ -1,6 +1,4 @@
-// All calls go through our Express proxy at /api/external/* to avoid
-// mixed-content (HTTP vs HTTPS) errors in the published app.
-const BACKEND_BASE = "/api/external";
+const BACKEND_BASE = (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export interface ExternalCustomer {
   name: string;

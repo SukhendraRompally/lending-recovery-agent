@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm install --prefix frontend && npm run --prefix frontend build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "echo noop"
+}
