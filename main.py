@@ -39,9 +39,6 @@ from models import (
     EscalateResponse,
 )
 
-import logging
-logger = logging.getLogger(__name__)
-
 app = FastAPI(
     title="Lending Recovery Agent API",
     description=(
@@ -50,12 +47,6 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
-
-
-@app.on_event("startup")
-async def log_env_vars():
-    keys = [k for k in os.environ if any(x in k for x in ("AZURE", "OPENAI", "ELEVEN"))]
-    print(f"ENV CHECK — keys present: {keys}", flush=True)
 
 app.add_middleware(
     CORSMiddleware,
