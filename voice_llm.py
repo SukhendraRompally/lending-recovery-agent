@@ -19,7 +19,6 @@ def _get_client() -> AzureOpenAI:
     global _az_client
     if _az_client is None:
         _az_client = AzureOpenAI(
-            api_key=os.environ.get("AZURE_OPENAI_API_KEY") or os.environ.get("AZURE_OPENAI_KEY"),
             azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-01-01-preview"),
         )
