@@ -1,0 +1,5 @@
+# Python backend — deployed on Railway, not Vercel
+*.py
+requirements.txt
+Procfile
+start.sh
