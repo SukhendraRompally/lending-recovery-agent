@@ -3,6 +3,7 @@ Lending Recovery Agent — FastAPI Backend
 Provides compliance-guarded, persona-driven debt collection outreach via Claude AI.
 """
 
+import os
 from fastapi import FastAPI, HTTPException, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -38,6 +39,9 @@ from models import (
     EscalateResponse,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="Lending Recovery Agent API",
     description=(
@@ -46,6 +50,12 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+
+@app.on_event("startup")
+async def log_env_vars():
+    keys = [k for k in os.environ if any(x in k for x in ("AZURE", "OPENAI", "ELEVEN"))]
+    logger.warning("ENV CHECK — keys present: %s", keys)
 
 app.add_middleware(
     CORSMiddleware,
