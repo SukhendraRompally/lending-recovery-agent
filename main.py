@@ -3,8 +3,9 @@ Lending Recovery Agent — FastAPI Backend
 Provides compliance-guarded, persona-driven debt collection outreach via Claude AI.
 """
 
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from database import CUSTOMERS
 from compliance import check_compliance, check_daily_limit
@@ -52,6 +53,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
