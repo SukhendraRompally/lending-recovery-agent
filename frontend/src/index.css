@@ -75,7 +75,7 @@
   --elevate-1: rgba(255,255,255, .03);
   --elevate-2: rgba(255,255,255, .07);
 
-  /* Interface AI — deep navy + electric blue brand */
+  /* Deep navy + electric blue brand */
   --background: 222 35% 5%;
   --foreground: 214 30% 92%;
 
@@ -87,7 +87,7 @@
   --popover-foreground: 214 30% 92%;
   --popover-border: 222 25% 13%;
 
-  /* Interface AI electric blue — #2563EB */
+  /* Electric blue — #2563EB */
   --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
 

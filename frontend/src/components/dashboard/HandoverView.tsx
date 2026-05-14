@@ -196,7 +196,7 @@ export function HandoverView({ customerId, profile, reasoningTrace, reasoningLab
                 TRANSFER MEMO
               </DialogTitle>
               <DialogDescription className="text-xs font-mono opacity-70">
-                Authorized Handover Document — Interface AI Smart Collections
+                Authorized Handover Document — Smart Collections Engine
               </DialogDescription>
             </div>
           </div>

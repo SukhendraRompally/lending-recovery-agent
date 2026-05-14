@@ -63,7 +63,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-background text-foreground font-sans overflow-hidden">
-      {/* Header — Interface AI brand */}
+      {/* Header */}
       <header className="flex-none h-14 border-b border-border bg-card/80 flex items-center justify-between px-6 z-10">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-sm bg-primary/20 border border-primary/30 flex items-center justify-center">
@@ -71,7 +71,7 @@ export default function Dashboard() {
           </div>
           <div>
             <h1 className="text-sm font-semibold tracking-wide uppercase text-foreground">
-              Interface AI
+              Recovery Agent
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase font-mono tracking-widest">
               Smart Collections Engine

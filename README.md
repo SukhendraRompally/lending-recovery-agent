@@ -60,15 +60,12 @@ This memo travels with the case if it needs to be escalated — no information i
 
 This is where it gets impressive for a live demonstration:
 
-1. **Click "Initiate Call"** — the AI greets the customer in their assigned persona voice (powered by ElevenLabs text-to-speech)
+1. **Click "Initiate Call"** — the AI greets the customer in their assigned persona voice
 2. **Speak as the customer** — the browser's microphone captures your reply and converts it to text
 3. **The AI responds** — it maintains the full conversation history, stays in character, references bank policy naturally ("we do have a 3-month deferral option available to you...")
 4. **Click "End Call"** — the system instantly produces the Transfer Memo
 
-Three different AI voices are used:
-- **Rachel** (warm, calm) for the Supportive Partner
-- **Adam** (authoritative) for the Formal Officer
-- **Bella** (professional) for the Balanced Advisor
+Three distinct AI voices are used — one warm and calm for the Supportive Partner, one authoritative for the Formal Officer, and one professional for the Balanced Advisor.
 
 ---
 
@@ -94,10 +91,10 @@ We created 10 fictional customers spanning 7 countries and timezones, so the dem
 ## Tech Stack
 
 ```
-Frontend  →  React + Vite + Tailwind (Replit)
-Backend   →  Python + FastAPI (this repository)
+Frontend  →  React + Vite + Tailwind (Vercel)
+Backend   →  Python + FastAPI (Railway)
 AI Model  →  GPT-4.1 via Azure OpenAI
-Voice     →  ElevenLabs Text-to-Speech API
+Voice     →  Text-to-Speech API
 ```
 
 ### Backend API Endpoints
@@ -112,9 +109,6 @@ Voice     →  ElevenLabs Text-to-Speech API
 | `POST /voice/call/{id}/end` | Ends call, returns Transfer Memo |
 | `POST /summarize` | Summarises any chat history into a 2-sentence memo |
 
-The backend is live at: **`http://20.98.68.88:8010`**
-Interactive API docs: **`http://20.98.68.88:8010/docs`**
-
 ---
 
 ## Running It Locally
@@ -122,7 +116,7 @@ Interactive API docs: **`http://20.98.68.88:8010/docs`**
 ### Prerequisites
 - Python 3.11+
 - An Azure OpenAI deployment (GPT-4.1 or equivalent)
-- An ElevenLabs API key (for voice — optional, text still works without it)
+- A text-to-speech API key (for voice — optional, text still works without it)
 
 ### Setup
 ```bash
@@ -144,12 +138,34 @@ AZURE_OPENAI_API_VERSION=2025-01-01-preview
 ELEVENLABS_API_KEY=...          # optional — voice works without it
 ```
 
-### Start the Server
+### Start the Backend
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open `http://localhost:8000/docs` to explore all endpoints interactively.
+
+### Start the Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Set `VITE_BACKEND_URL=http://localhost:8000` in `frontend/.env.local` when running locally.
+
+---
+
+## Deployment
+
+| Layer | Platform | Notes |
+|---|---|---|
+| Frontend | Vercel | Auto-deploys on push to `main` |
+| Backend | Railway | Set env vars in Railway dashboard |
+
+**Vercel** — set `VITE_BACKEND_URL` to your Railway backend URL in Vercel → Settings → Environment Variables, then redeploy.
+
+**Railway** — connect this repo, Railway detects the `Procfile` and starts `uvicorn main:app` automatically.
 
 ---
 
@@ -162,10 +178,11 @@ lending-recovery-agent/
 ├── database.py          # 10 mock customers + Bank Hardship Policy (RAG)
 ├── compliance.py        # Timezone-aware FDCPA compliance engine
 ├── llm.py               # Azure OpenAI — written outreach + memo generation
-├── voice_llm.py         # Azure OpenAI (voice mode) + ElevenLabs TTS
+├── voice_llm.py         # Azure OpenAI (voice mode) + TTS integration
 ├── voice_sessions.py    # In-memory call session manager
 ├── models.py            # Request/response data models
 ├── requirements.txt     # Python dependencies
+├── Procfile             # Railway start command
 └── .env.example         # Environment variable template
 ```
 

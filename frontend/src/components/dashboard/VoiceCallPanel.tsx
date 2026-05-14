@@ -390,7 +390,7 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
             <div className="text-center text-muted-foreground font-mono text-xs border border-dashed border-border rounded-sm p-8">
               <Phone className="w-8 h-8 mx-auto mb-3 opacity-30" />
               <div className="uppercase tracking-wider">Select a customer and initiate call</div>
-              <div className="mt-2 opacity-60">Powered by ElevenLabs voice synthesis</div>
+              <div className="mt-2 opacity-60">Powered by AI voice synthesis</div>
             </div>
           </div>
         ) : (
@@ -577,7 +577,7 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
                 CALL SUMMARY MEMO
               </DialogTitle>
               <div className="text-xs font-mono opacity-70 text-muted-foreground">
-                ElevenLabs Voice Agent — Post-Call Analysis
+                AI Voice Agent — Post-Call Analysis
               </div>
             </div>
           </div>
