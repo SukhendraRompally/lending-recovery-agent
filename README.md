@@ -92,7 +92,7 @@ We created 10 fictional customers spanning 7 countries and timezones, so the dem
 
 ```
 Frontend  →  React + Vite + Tailwind (Vercel)
-Backend   →  Python + FastAPI (Railway)
+Backend   →  Python + FastAPI (Render)
 AI Model  →  GPT-4.1 via Azure OpenAI
 Voice     →  Text-to-Speech API
 ```
@@ -161,11 +161,11 @@ Set `VITE_BACKEND_URL=http://localhost:8000` in `frontend/.env.local` when runni
 | Layer | Platform | Notes |
 |---|---|---|
 | Frontend | Vercel | Auto-deploys on push to `main` |
-| Backend | Railway | Set env vars in Railway dashboard |
+| Backend | Render | Set env vars in Render dashboard |
 
-**Vercel** — set `VITE_BACKEND_URL` to your Railway backend URL in Vercel → Settings → Environment Variables, then redeploy.
+**Vercel** — set `VITE_BACKEND_URL` to your Render backend URL in Vercel → Settings → Environment Variables, then redeploy.
 
-**Railway** — connect this repo, Railway detects the `Procfile` and starts `uvicorn main:app` automatically.
+**Render** — connect this repo, set the start command to `uvicorn main:app --host 0.0.0.0 --port $PORT`, and add env vars in the Environment tab. Add a `.python-version` file with `3.11` to avoid build issues with newer Python versions.
 
 ---
 
