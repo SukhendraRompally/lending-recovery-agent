@@ -131,7 +131,7 @@ cp .env.example .env
 
 ### Environment Variables
 ```
-AZURE_OPENAI_KEY=...
+AZURE_OPENAI_API_KEY=...
 AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
 AZURE_OPENAI_API_VERSION=2025-01-01-preview
