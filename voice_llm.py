@@ -1,10 +1,10 @@
-"""Multi-turn LLM conversation (Azure OpenAI) + ElevenLabs TTS for voice call demo."""
+"""Multi-turn LLM conversation (DeepSeek) + ElevenLabs TTS for voice call demo."""
 
 import os
 import base64
 import logging
 from dotenv import load_dotenv
-from openai import AzureOpenAI
+from openai import OpenAI
 
 load_dotenv()
 
@@ -13,18 +13,18 @@ logger = logging.getLogger(__name__)
 from database import BANK_HARDSHIP_POLICY
 from models import AgentPersona
 
-_az_client: AzureOpenAI | None = None
+_az_client: OpenAI | None = None
 
-def _get_client() -> AzureOpenAI:
+def _get_client() -> OpenAI:
     global _az_client
     if _az_client is None:
-        _az_client = AzureOpenAI(
-            azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
-            api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-01-01-preview"),
+        _az_client = OpenAI(
+            api_key=os.environ.get("DEEPSEEK_API_KEY"),
+            base_url="https://api.deepseek.com",
         )
     return _az_client
 
-DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")
+DEPLOYMENT = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 # Custom voice ID used for all personas
 CUSTOM_VOICE_ID = "yLZAvtg5PITL2tUmz4UB"

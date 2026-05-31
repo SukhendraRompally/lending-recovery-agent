@@ -1,25 +1,25 @@
-"""LLM integration using Azure OpenAI with persona-based system prompts."""
+"""LLM integration using DeepSeek with persona-based system prompts."""
 
 import os
 from dotenv import load_dotenv
-from openai import AzureOpenAI
+from openai import OpenAI
 from database import BANK_HARDSHIP_POLICY
 from models import AgentPersona, PersonaTrace, EscalationTrace
 
 load_dotenv()
 
-_client: AzureOpenAI | None = None
+_client: OpenAI | None = None
 
-def _get_client() -> AzureOpenAI:
+def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = AzureOpenAI(
-            azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
-            api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-01-01-preview"),
+        _client = OpenAI(
+            api_key=os.environ.get("DEEPSEEK_API_KEY"),
+            base_url="https://api.deepseek.com",
         )
     return _client
 
-DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")
+DEPLOYMENT = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 
 def build_persona_trace(customer: dict) -> PersonaTrace:
