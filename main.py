@@ -299,6 +299,30 @@ def summarize_interaction(request: SummarizeRequest):
 voice_router = APIRouter(prefix="/voice", tags=["Voice Call"])
 
 
+@voice_router.get("/tts-check", tags=["Voice Call"])
+def tts_check():
+    """Diagnostic: verify ElevenLabs connectivity and voice ID without running a full call."""
+    import os
+    api_key = os.environ.get("ELEVENLABS_API_KEY")
+    if not api_key:
+        return {"status": "error", "reason": "ELEVENLABS_API_KEY environment variable is not set"}
+    try:
+        from elevenlabs.client import ElevenLabs
+        from elevenlabs import VoiceSettings
+        from voice_llm import CUSTOM_VOICE_ID
+        el_client = ElevenLabs(api_key=api_key)
+        audio_gen = el_client.text_to_speech.convert(
+            voice_id=CUSTOM_VOICE_ID,
+            text="Test.",
+            model_id="eleven_turbo_v2_5",
+            voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.75, style=0.0, use_speaker_boost=True),
+        )
+        audio_bytes = b"".join(audio_gen)
+        return {"status": "ok", "bytes": len(audio_bytes), "voice_id": CUSTOM_VOICE_ID, "model": "eleven_turbo_v2_5"}
+    except Exception as exc:
+        return {"status": "error", "reason": str(exc), "voice_id": CUSTOM_VOICE_ID}
+
+
 @voice_router.post("/call/start", response_model=VoiceCallStartResponse)
 def voice_call_start(request: VoiceCallStartRequest):
     """
