@@ -1,6 +1,7 @@
 """Multi-turn LLM conversation (DeepSeek) + ElevenLabs TTS for voice call demo."""
 
 import os
+import re
 import base64
 import logging
 from dotenv import load_dotenv
@@ -85,14 +86,28 @@ TONE:
 --- END OF POLICY ---
 
 CRITICAL VOICE CALL RULES:
-- Keep each response to 2-3 spoken sentences MAXIMUM — this is a phone call, not a letter
-- Use natural conversational spoken language — no "Dear Mr/Ms", no formal letter structure
+- Keep each response to 2 spoken sentences MAXIMUM — this is a live phone call, brevity is essential
+- Use natural conversational spoken language only — no "Dear Mr/Ms", no bullet points, no letter structure
+- Output ONLY the words you would speak aloud — no stage directions, no emotional labels, no meta-commentary
+- NEVER write things like {{Warmly}}, [pause], *softly*, (sighs), or any bracketed/braced/starred annotation
 - ALWAYS mention at least one concrete policy option per response (e.g. "we have a 3-month deferral option")
-- If customer seems distressed or emotional, acknowledge their feelings FIRST before pivoting to solutions
-- When asked for specifics, reference the policy (minimum 10% payment, 3/6/12 month plans, etc.)
+- If customer seems distressed, acknowledge their feelings FIRST before pivoting to solutions
 - Close each turn with either a question or a clear next step to keep the conversation moving
 - NEVER threaten illegal action or use abusive/harassing language (FDCPA compliant)
 """
+
+
+_STAGE_DIRECTION_RE = re.compile(
+    r'\{[^}]{0,60}\}'       # {Warmly}, {Firm tone}, etc.
+    r'|\[[^\]]{0,60}\]'     # [pause], [empathetic], etc.
+    r'|\*[^*]{0,60}\*'      # *softly*, *sighs*, etc.
+    r'|\([^)]{0,60}\)',     # (sighs), (warmly), etc.
+)
+
+def _clean_for_speech(text: str) -> str:
+    """Strip stage directions and normalise whitespace."""
+    text = _STAGE_DIRECTION_RE.sub("", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
 
 
 def generate_voice_response(session) -> str:
@@ -103,7 +118,7 @@ def generate_voice_response(session) -> str:
         session: VoiceSession instance with .messages, .persona, .customer
 
     Returns:
-        Agent response text (2-3 spoken sentences)
+        Agent response text (2 spoken sentences, stage directions stripped)
     """
     system_prompt = _build_voice_system_prompt(session.persona, session.customer)
 
@@ -117,7 +132,7 @@ def generate_voice_response(session) -> str:
             f"Delinquency status: {session.customer['delinquency_label']}. "
             f"Customer tenure: {session.customer['tenure_years']} year(s). "
             f"Hardship flag: {'Yes' if session.customer['hardship_flag'] else 'No'}. "
-            f"Begin the call with a professional greeting, introduce yourself and the purpose of the call."
+            f"Begin the call with a brief, natural greeting — introduce yourself and the purpose of the call in one sentence."
         )
         messages = [{"role": "user", "content": opening_context}]
 
@@ -125,11 +140,12 @@ def generate_voice_response(session) -> str:
 
     response = _get_client().chat.completions.create(
         model=DEPLOYMENT,
-        max_tokens=256,
+        max_tokens=120,
         messages=az_messages,
     )
 
-    return (response.choices[0].message.content or "I apologise, there was a technical issue. Please hold.").strip()
+    raw = (response.choices[0].message.content or "I apologise, there was a technical issue. Please hold.").strip()
+    return _clean_for_speech(raw)
 
 
 def text_to_speech(text: str, persona: AgentPersona) -> bytes:

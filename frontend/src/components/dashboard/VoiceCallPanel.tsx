@@ -123,15 +123,22 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
     }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
+    utterance.rate = 0.88;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    // Pick an English voice if available; fall back to browser default
+
+    // Voice priority: Google en-US (Chrome, best quality) > any en-US > any en > default
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find((v) => v.lang.startsWith("en-") && v.localService)
-      ?? voices.find((v) => v.lang.startsWith("en-"))
-      ?? null;
-    if (preferred) utterance.voice = preferred;
+    const pick =
+      voices.find((v) => v.name === "Google US English") ??
+      voices.find((v) => v.name.startsWith("Google") && v.lang.startsWith("en-US")) ??
+      voices.find((v) => v.name.startsWith("Google") && v.lang.startsWith("en")) ??
+      voices.find((v) => v.lang === "en-US" && v.localService) ??
+      voices.find((v) => v.lang.startsWith("en-US")) ??
+      voices.find((v) => v.lang.startsWith("en")) ??
+      null;
+    if (pick) utterance.voice = pick;
+
     utterance.onend = () => onEnd();
     utterance.onerror = () => onEnd();
     window.speechSynthesis.speak(utterance);
