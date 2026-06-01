@@ -111,22 +111,40 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
     }
+    window.speechSynthesis?.cancel();
   }, []);
 
-  const playAndThen = useCallback((base64: string, onEnd: () => void) => {
+  const speakText = useCallback((text: string, onEnd: () => void) => {
+    stopAudio();
+    setCallState("agent_speaking");
+    if (!("speechSynthesis" in window)) {
+      onEnd();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    // Pick an English voice if available; fall back to browser default
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find((v) => v.lang.startsWith("en-") && v.localService)
+      ?? voices.find((v) => v.lang.startsWith("en-"))
+      ?? null;
+    if (preferred) utterance.voice = preferred;
+    utterance.onend = () => onEnd();
+    utterance.onerror = () => onEnd();
+    window.speechSynthesis.speak(utterance);
+  }, [stopAudio]);
+
+  const playAndThen = useCallback((base64: string, text: string, onEnd: () => void) => {
     stopAudio();
     setCallState("agent_speaking");
     const audio = playAudioBase64(base64);
     currentAudioRef.current = audio;
-    audio.onended = () => {
-      currentAudioRef.current = null;
-      onEnd();
-    };
-    audio.onerror = () => {
-      currentAudioRef.current = null;
-      onEnd();
-    };
-  }, [stopAudio]);
+    audio.onended = () => { currentAudioRef.current = null; onEnd(); };
+    audio.onerror  = () => { currentAudioRef.current = null; speakText(text, onEnd); };
+  }, [stopAudio, speakText]);
 
   const startListening = useCallback(() => {
     const SpeechRecognitionAPI =
@@ -214,7 +232,9 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
       }
 
       if (result.audio_available && result.audio_base64) {
-        playAndThen(result.audio_base64, () => setCallState("active"));
+        playAndThen(result.audio_base64, result.agent_text ?? "", () => setCallState("active"));
+      } else if (result.agent_text) {
+        speakText(result.agent_text, () => setCallState("active"));
       } else {
         setCallState("active");
       }
@@ -237,7 +257,9 @@ export function VoiceCallPanel({ onReasoningUpdate }: VoiceCallPanelProps) {
         setChatLog((prev) => [...prev, { role: "agent", text: turn.agent_text, turnNumber: turn.turn_number }]);
       }
       if (turn.audio_available && turn.audio_base64) {
-        playAndThen(turn.audio_base64, () => setCallState("active"));
+        playAndThen(turn.audio_base64, turn.agent_text ?? "", () => setCallState("active"));
+      } else if (turn.agent_text) {
+        speakText(turn.agent_text, () => setCallState("active"));
       } else {
         setCallState("active");
       }
