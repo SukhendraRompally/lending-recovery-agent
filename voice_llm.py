@@ -141,7 +141,7 @@ def text_to_speech(text: str, persona: AgentPersona) -> bytes:
     """
     api_key = os.environ.get("ELEVENLABS_API_KEY")
     if not api_key:
-        logger.warning("ELEVENLABS_API_KEY not set — skipping TTS")
+        logger.error("ELEVENLABS_API_KEY not set — TTS disabled. Set this env var to enable voice.")
         return b""
 
     try:
@@ -153,7 +153,7 @@ def text_to_speech(text: str, persona: AgentPersona) -> bytes:
         audio_generator = el_client.text_to_speech.convert(
             voice_id=CUSTOM_VOICE_ID,
             text=text,
-            model_id="eleven_turbo_v2",
+            model_id="eleven_turbo_v2_5",
             voice_settings=VoiceSettings(
                 stability=0.5,
                 similarity_boost=0.75,
@@ -164,7 +164,7 @@ def text_to_speech(text: str, persona: AgentPersona) -> bytes:
         return b"".join(audio_generator)
 
     except Exception as exc:
-        logger.warning("ElevenLabs TTS failed: %s", exc)
+        logger.error("ElevenLabs TTS failed (voice_id=%s): %s", CUSTOM_VOICE_ID, exc)
         return b""
 
 
